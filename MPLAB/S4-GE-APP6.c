@@ -232,7 +232,8 @@ int main(void) {
                 }
                 
                 // *** POINT A2: calculate frequency spectrum components X[k] with PIC32 DSP Library FFT function call
-
+                mips_fft32(outFFT, inFFT, fftc, debugBuffer1, 10);
+                
                 // Calculate power spectrum
                 calc_power_spectrum(outFFT, debugBuffer1, FFT_LEN);
 
@@ -345,8 +346,17 @@ int main(void) {
 //
 
 void calc_power_spectrum(int32c *inbuf, int32_t *outbuf, int n) {
-    double re, im;
-
+    int i;
+    double re, im, res;
+    
+    for(i = 0; i < n; i++)
+    {
+        re = inbuf[i].re;
+        im = inbuf[i].im;
+        res = sqrt((re*re) + (im*im));
+        outbuf[i] = 10 * log10(res + 1);
+    }
+    
     // *** POINT A3: Complete the calc_power_spectrum() function
 }
 
