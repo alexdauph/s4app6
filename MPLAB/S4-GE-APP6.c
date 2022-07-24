@@ -1,21 +1,21 @@
 /*
  S4GE-APP6
- 
+
  Author: Paul Charette
- 
+
  Last modified: 09/08/2021
- 
- Copyright : Université de Sherbrooke
+
+ Copyright : Universitï¿½ de Sherbrooke
 
  Summary:
     Time-domain IIR and frequency-domain FIR filtering of audio signal
-   
+
  GitHub repository: https://github.com/pgcharetteUdeS/S4GE-APP6-MPLAB
- 
+
  Notes:
     - FIR filtering : filter transfer function coefficients in filterFIRcoeffs.h
     - IRR filtering : filter coefficients in filterIIRcoeffs.h
- 
+
  Controls (DIP switches):
     - SW0 : Pass-through
     - SW1 : Calculate frequency with strongest amplitude
@@ -25,7 +25,7 @@
     - SW5 : FIR filter H5 (bandpass, [1500, 2500] Hz)
     - SW6 : FIR filter H6 (bandpass, [500 Hz, 1500] Hz)
     - SW7 : FIR filter H7 (low-pass, fc = 500 Hz)
- 
+
  Main variables:
    - inFFT[FFT_LEN], outFFT[FFT_LEN], Scratch[FFT_LEN]
         32 bit COMPLEX integer buffers for use with PIC32 DSP library FFT function calls
@@ -36,14 +36,14 @@
    - inBuffer1[SIG_LEN], inBuffer2[SIG_LEN], outBuffer1[SIG_LEN], outBuffer2[SIG_LEN]:
         32 bit integer buffer pairs for input/output double-buffering.
         While one input/output buffer pair of length SIG_LEN is being filled with THREE blocks of data
-		by the ADC1 interrupt handler (each block is of length H_LEN=256, SIG_LEN = 3*H_LEN),
-		the other buffer pair is being processed in the main program by the overlap & save method
-		for FIR filtering on FOUR blocks (FFT_LEN = SIG_LEN+H_LEN = 4*H_LEN)
+        by the ADC1 interrupt handler (each block is of length H_LEN=256, SIG_LEN = 3*H_LEN),
+        the other buffer pair is being processed in the main program by the overlap & save method
+        for FIR filtering on FOUR blocks (FFT_LEN = SIG_LEN+H_LEN = 4*H_LEN)
         using the inFFT, outFFT, and Scratch buffers.
     - previousInBuffer, previousOutBuffer, currentInBuffer, currentOutBuffer
         Pointer pairs that designate which of the input/output buffer pairs above are currently being
         filled by the ADC1 interrupt handler versus the other pair (previous 3 blocks of data)
-		being used for FIR filtering with the overlap & save method in the main program.
+        being used for FIR filtering with the overlap & save method in the main program.
         When the ADC1 interrupt handler flags a buffer as full (inputBufferFull = true),
         the pointers are swapped in the main program and FIR processing begins.
     - debugBuffer1[FFT_LEN], debugBuffer2[FFT_LEN]: 32 bit integer buffers for general usage.
@@ -80,7 +80,7 @@ bool inputBufferFull, IIREnabled;
 // Though this is BAD PROGRAMMING PRACTICE, define these arrays as
 // static (private) global variables for the MPLAB DMCI plug-in to see them
 static int32_t inBuffer1[SIG_LEN], inBuffer2[SIG_LEN], outBuffer1[SIG_LEN], outBuffer2[SIG_LEN],
-        debugBuffer1[FFT_LEN], debugBuffer2[FFT_LEN], Fe;
+    debugBuffer1[FFT_LEN], debugBuffer2[FFT_LEN], Fe;
 static int32c inFFT[FFT_LEN], outFFT[FFT_LEN], Htot[FFT_LEN], twiddles[FFT_LEN / 2];
 
 // Local function prototyping
@@ -90,14 +90,15 @@ void numberInto4DigitString(int, char *);
 bool switchStateChanged(bool *, bool *, bool *, bool *, bool *, bool *, bool *, bool *);
 unsigned char SWT_GetValue_Local(unsigned char);
 
-int main(void) {
+int main(void)
+{
     // Static declarations allow variables to be visible in debugger at all times
-    static double spectralResolution=1;
+    static double spectralResolution = 1;
     static int32_t *previousInBuffer, *previousOutBuffer;
     static int maxN, maxVal, maxAmplFreq;
     bool SW7StateChange, SW6StateChange, SW5StateChange, SW4StateChange, SW3StateChange,
-            SW2StateChange, SW1StateChange, SW0StateChange, switchStateChange;
-    int32_t n, m, k, log2N = LOG2FFTLEN, theAnswerTofLifeTheUniverseAndEverything, niters=0;
+        SW2StateChange, SW1StateChange, SW0StateChange, switchStateChange;
+    int32_t n, m, k, log2N = LOG2FFTLEN, theAnswerTofLifeTheUniverseAndEverything, niters = 0;
     int32c Scratch[FFT_LEN];
     char LCDBuf[256], freqDigits[4], clrString[] = "                ";
 
@@ -122,6 +123,7 @@ int main(void) {
 
     // Calculate spectral resolution, use (double) type casting for parameters
     // *** POINT A1: spectralResolution =...
+    spectralResolution = (double)Fe / (double)FFT_LEN;
 
     // MX3 peripherals hardware initializations
     BTN_Init();
@@ -141,10 +143,12 @@ int main(void) {
     TMR3_Start();
 
     // Wait for user to press BTND to start
-    while (BTN_GetValue('D') == 0);
+    while (BTN_GetValue('D') == 0)
+        ;
 
     // DEBUG: copy twiddles to local buffer for viewing with DMCI
-    for (k = 0; k < FFT_LEN / 2; k++) {
+    for (k = 0; k < FFT_LEN / 2; k++)
+    {
         twiddles[k] = fft32c1024[k];
     }
 
@@ -152,18 +156,23 @@ int main(void) {
     // the input buffer is full, at which point the data is processed according
     // to the MX3 DIP switch settings: PASS-THROUGH, SPECTRUM ESTIMATION,
     // REAL-TIME IIR FILTERING, or BUFFERED FIR FILTERING.
-    while (1) {
-        if (inputBufferFull) {
+    while (1)
+    {
+        if (inputBufferFull)
+        {
             // DEBUG: Raise pin BIN1 for oscilloscope timing measurements
             BIN1(1);
 
             // Swap input/output buffer pointers
-            if (currentInBuffer == inBuffer1) {
+            if (currentInBuffer == inBuffer1)
+            {
                 currentInBuffer = inBuffer2;
                 currentOutBuffer = outBuffer2;
                 previousInBuffer = inBuffer1;
                 previousOutBuffer = outBuffer1;
-            } else {
+            }
+            else
+            {
                 currentInBuffer = inBuffer1;
                 currentOutBuffer = outBuffer1;
                 previousInBuffer = inBuffer2;
@@ -175,25 +184,27 @@ int main(void) {
             // at least two (three in this case) buffers are acquired sequentially without interruption
             // as required for the Overlap & Save method to work properly (no glitches)
             if (++niters == 4)
-                niters = 0; // (DEBUG C) 
+                niters = 0; // (DEBUG C)
 
             // Read switch states: if any switch has changed state, raise switchStateChangeflag
             switchStateChange = switchStateChanged(&SW7StateChange, &SW6StateChange, &SW5StateChange,
-                    &SW4StateChange, &SW3StateChange, &SW2StateChange, &SW1StateChange, &SW0StateChange);
+                                                   &SW4StateChange, &SW3StateChange, &SW2StateChange, &SW1StateChange, &SW0StateChange);
 
             // If switch state change, initialize main decision tree state: disable IIR filtering,
             // clear LCD and 7-segment display
-            if (switchStateChange) {
+            if (switchStateChange)
+            {
                 IIREnabled = false;
                 SSD_WriteDigits(-1, -1, -1, -1, 0, 0, 0, 0);
                 LCD_WriteStringAtPos(clrString, 0, 0);
                 LCD_WriteStringAtPos(clrString, 1, 0);
             }
 
-            // 
+            //
             // MAIN DECISION TREE: : PASS-THROUGH, SPECTRUM ESTIMATION, REAL-TIME IIR FILTERING, or BUFFERED FIR FILTERING
             //
-            if (SWT_GetValue_Local(0) == 0) { // MAIN DECISION TREE: PASS-THROUGH
+            if (SWT_GetValue_Local(0) == 0)
+            { // MAIN DECISION TREE: PASS-THROUGH
                 // Copy input samples straight to output buffer (pass-through)
                 for (n = 0; n < SIG_LEN; n++)
                     previousOutBuffer[n] = previousInBuffer[n];
@@ -201,8 +212,9 @@ int main(void) {
                 // If required, change to display pass-through functionality message on LCD
                 if (switchStateChange)
                     LCD_WriteStringAtPos("PASS-THROUGH... ", 0, 0);
-
-            } else if (SWT_GetValue_Local(1) == 0) { // MAIN DECISION TREE: SPECTRUM ESTIMATION
+            }
+            else if (SWT_GetValue_Local(1) == 0)
+            { // MAIN DECISION TREE: SPECTRUM ESTIMATION
                 // Copy input samples straight to output buffer (same as for pass-through)
                 for (n = 0; n < SIG_LEN; n++)
                     previousOutBuffer[n] = previousInBuffer[n];
@@ -222,57 +234,67 @@ int main(void) {
                 //      of two, the division/multiplication operations can be combined without
                 //      loss of resolution with an arithmetic shift by the difference of bits between
                 //      the two: ">> (H_and_W_QXY_RES_NBITS - LOG2FFTLEN"
-                for (n = 0; n < SIG_LEN; n++) {
+                for (n = 0; n < SIG_LEN; n++)
+                {
                     inFFT[n].re = (previousInBuffer[n] * window[n]) >> (H_and_W_QXY_RES_NBITS - LOG2FFTLEN);
                     inFFT[n].im = 0;
                 }
-                for (; n < FFT_LEN; n++) {
+                for (; n < FFT_LEN; n++)
+                {
                     inFFT[n].re = 0;
                     inFFT[n].im = 0;
                 }
-                
+
                 // *** POINT A2: calculate frequency spectrum components X[k] with PIC32 DSP Library FFT function call
                 mips_fft32(outFFT, inFFT, fftc, debugBuffer1, 10);
-                
+
                 // Calculate power spectrum
                 calc_power_spectrum(outFFT, debugBuffer1, FFT_LEN);
 
                 // Find index of frequency with highest power (positive frequency spectrum only)
                 maxVal = -1;
-                for (k = 1; k < (FFT_LEN / 2) - 1; k++) {
-                    if (debugBuffer1[k] > maxVal) {
+                for (k = 1; k < (FFT_LEN / 2) - 1; k++)
+                {
+                    if (debugBuffer1[k] > maxVal)
+                    {
                         maxVal = debugBuffer1[k];
                         maxN = k;
                     }
                 }
-                
-                // Calculate value in Hz of frequency with highest power 
-                // *** POINT A4: maxAmplFreq = ...
 
-                // Show frequency with highest power on 7 segment display, max-out at 4 digits (9999)
-                numberInto4DigitString(maxAmplFreq, freqDigits);
+                // Calculate value in Hz of frequency with highest power
+                // *** POINT A4: maxAmplFreq = ...
+                maxAmplFreq = (maxN * Fe) / FFT_LEN;
+
+                    // Show frequency with highest power on 7 segment display, max-out at 4 digits (9999)
+                    numberInto4DigitString(maxAmplFreq, freqDigits);
                 SSD_WriteDigits(freqDigits[3], freqDigits[2], freqDigits[1], freqDigits[0], 0, 0, 0, 0);
 
                 // If required, change to display spectrum estimation functionality message on LCD
-                if (switchStateChange) {
+                if (switchStateChange)
+                {
                     LCD_WriteStringAtPos("SPECTRUM ESTM...", 0, 0);
-                    sprintf(LCDBuf, "      df = %d Hz", (int) spectralResolution);
+                    sprintf(LCDBuf, "      df = %d Hz", (int)spectralResolution);
                     LCD_WriteStringAtPos(LCDBuf, 1, 0);
                 }
-                
-            } else if (SWT_GetValue_Local(2) == 0) { // MAIN DECISION TREE: REAL-TIME IIR FILTERING
+            }
+            else if (SWT_GetValue_Local(2) == 0)
+            { // MAIN DECISION TREE: REAL-TIME IIR FILTERING
                 // Enable IIR filtering in ADC1 interrupt handler
                 IIREnabled = true;
 
                 // If required, change to display IIR filtering functionality message on LCD
-                if (switchStateChange) {
+                if (switchStateChange)
+                {
                     LCD_WriteStringAtPos("REAL-TIME IIR...", 0, 0);
                 }
-                
-            } else { // MAIN DECISION TREE: BUFFERED FIR FILTERING ("Overlap-and-save" method, see Lyons, p. 719)
+            }
+            else
+            { // MAIN DECISION TREE: BUFFERED FIR FILTERING ("Overlap-and-save" method, see Lyons, p. 719)
                 // If any of the switches have changed state, re-build FIR filter cumulative
                 //  transfer function, Htot, according to the current SW7-SW3 settings
-                if (switchStateChange) {
+                if (switchStateChange)
+                {
                     buildH(H7, H6, H5, H4, H3, Htot, FFT_LEN);
                 }
 
@@ -286,7 +308,7 @@ int main(void) {
                 //          (3 blocks) pointed to by "previousInBuffer".
                 //     IMPORTANT: Pre-multiplication of x[n] by N (FFT_LEN) is required because
                 //                of the built-in division by N in the PIC32 DSP Library implementation
-                //                of the FFT algorithm (See DS51685E, p.118), else roundoff error 
+                //                of the FFT algorithm (See DS51685E, p.118), else roundoff error
                 //                decreases resolution of X[k] result.
 
                 // *** POINT B1: Calculate X[k] with PIC32 DSP Library FFT function call
@@ -297,10 +319,11 @@ int main(void) {
                 // *** POINT B3: Inverse FFT by forward FFT library function call, no need to divide by N
 
                 // *** POINT B4: Extract real part of the inverse FFT result and remove H QX.Y scaling,
-				// discard first block as per the "Overlap-and-save" method.
+                // discard first block as per the "Overlap-and-save" method.
 
                 // If required, update LCD display with SW7-SW3 switch states
-                if (switchStateChange) {
+                if (switchStateChange)
+                {
                     sprintf(LCDBuf, "H7:%s H6:%s H5:%s", (SWT_GetValue_Local(7) ? "+" : "-"),
                             (SWT_GetValue_Local(6) ? "+" : "-"), (SWT_GetValue_Local(5) ? "+" : "-"));
                     LCD_WriteStringAtPos(LCDBuf, 0, 0);
@@ -311,17 +334,16 @@ int main(void) {
 
             } // END MAIN DECISION TREE
 
-            // Reset the double-buffer swap flag to wait for next input buffer full... 
+            // Reset the double-buffer swap flag to wait for next input buffer full...
             inputBufferFull = false;
 
             // Lower pin BIN1, oscilloscope timing measurements
             BIN1(0);
         } // if (inputBufferFull)
-    } // while(1))
+    }     // while(1))
 
     return -1;
 }
-
 
 //
 // Calculation of power spectrum in dB: 10log(|X[k]|^2)
@@ -345,27 +367,28 @@ int main(void) {
 //    add "1" to the log10() operand: log10(blah + 1).
 //
 
-void calc_power_spectrum(int32c *inbuf, int32_t *outbuf, int n) {
+void calc_power_spectrum(int32c *inbuf, int32_t *outbuf, int n)
+{
     int i;
     double re, im, res;
-    
-    for(i = 0; i < n; i++)
+
+    for (i = 0; i < n; i++)
     {
         re = inbuf[i].re;
         im = inbuf[i].im;
-        res = sqrt((re*re) + (im*im));
+        res = sqrt((re * re) + (im * im));
         outbuf[i] = 10 * log10(res + 1);
     }
-    
+
     // *** POINT A3: Complete the calc_power_spectrum() function
 }
-
 
 //
 // DIP switch interface wrapper
 //
 
-unsigned char SWT_GetValue_Local(unsigned char n) {
+unsigned char SWT_GetValue_Local(unsigned char n)
+{
     if (n < 0)
         n = 0;
     else if (n > 7)
@@ -373,25 +396,27 @@ unsigned char SWT_GetValue_Local(unsigned char n) {
     return (SWT_GetValue(n));
 }
 
-
 //
 // Load "maxAmplFreq" value into a four digit character string, max out at 9999
 //
 
-void numberInto4DigitString(int maxAmplFreq, char *freqDigits) {
-    if (maxAmplFreq < 9999) {
+void numberInto4DigitString(int maxAmplFreq, char *freqDigits)
+{
+    if (maxAmplFreq < 9999)
+    {
         freqDigits[0] = maxAmplFreq / 1000;
-        freqDigits[1] = (maxAmplFreq - freqDigits[0]*1000) / 100;
-        freqDigits[2] = (maxAmplFreq - freqDigits[0]*1000 - freqDigits[1]*100) / 10;
-        freqDigits[3] = maxAmplFreq - freqDigits[0]*1000 - freqDigits[1]*100 - freqDigits[2]*10;
-    } else {
+        freqDigits[1] = (maxAmplFreq - freqDigits[0] * 1000) / 100;
+        freqDigits[2] = (maxAmplFreq - freqDigits[0] * 1000 - freqDigits[1] * 100) / 10;
+        freqDigits[3] = maxAmplFreq - freqDigits[0] * 1000 - freqDigits[1] * 100 - freqDigits[2] * 10;
+    }
+    else
+    {
         freqDigits[0] = 9;
         freqDigits[1] = 9;
         freqDigits[2] = 9;
         freqDigits[3] = 9;
     }
 }
-
 
 //
 // Build cumulative FIR transfer function, H, by summing the transfer functions
@@ -400,42 +425,54 @@ void numberInto4DigitString(int maxAmplFreq, char *freqDigits) {
 //       when summed, the total gain at any frequency never exceeds 1
 //
 
-void buildH(const int32c *H7p, const int32c *H6p, const int32c *H5p, const int32c *H4p, const int32c *H3p, int32c *Hp, int N) {
+void buildH(const int32c *H7p, const int32c *H6p, const int32c *H5p, const int32c *H4p, const int32c *H3p, int32c *Hp, int N)
+{
     int n;
 
     // Clear H summation buffer
-    for (n = 0; n < N; n++) {
+    for (n = 0; n < N; n++)
+    {
         Hp[n].re = 0;
         Hp[n].im = 0;
     }
 
     // Add H functions for each filter according to its switch setting
-    if (SWT_GetValue_Local(7)) {
-        for (n = 0; n < N; n++) {
+    if (SWT_GetValue_Local(7))
+    {
+        for (n = 0; n < N; n++)
+        {
             Hp[n].re += H7p[n].re;
             Hp[n].im += H7p[n].im;
         }
     }
-    if (SWT_GetValue_Local(6)) {
-        for (n = 0; n < N; n++) {
+    if (SWT_GetValue_Local(6))
+    {
+        for (n = 0; n < N; n++)
+        {
             Hp[n].re += H6p[n].re;
             Hp[n].im += H6p[n].im;
         }
     }
-    if (SWT_GetValue_Local(5)) {
-        for (n = 0; n < N; n++) {
+    if (SWT_GetValue_Local(5))
+    {
+        for (n = 0; n < N; n++)
+        {
             Hp[n].re += H5p[n].re;
             Hp[n].im += H5p[n].im;
         }
     }
-    if (SWT_GetValue_Local(4)) {
-        for (n = 0; n < N; n++) {
+    if (SWT_GetValue_Local(4))
+    {
+        for (n = 0; n < N; n++)
+        {
             Hp[n].re += H4p[n].re;
             Hp[n].im += H4p[n].im;
         }
     }
-    if (SWT_GetValue_Local(3)) {
-        for (n = 0; n < N; n++) {
+    if (SWT_GetValue_Local(3))
+    {
+        for (n = 0; n < N; n++)
+        {
             Hp[n].re += H3p[n].re;
             Hp[n].im += H3p[n].im;
         }
@@ -447,11 +484,13 @@ void buildH(const int32c *H7p, const int32c *H6p, const int32c *H5p, const int32
 //
 
 bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5StateChange,
-        bool *SW4StateChange, bool *SW3StateChange, bool *SW2StateChange, bool *SW1StateChange, bool * SW0StateChange) {
+                        bool *SW4StateChange, bool *SW3StateChange, bool *SW2StateChange, bool *SW1StateChange, bool *SW0StateChange)
+{
     static bool coldStart = true, SW7PreviousState, SW6PreviousState, SW5PreviousState,
-            SW4PreviousState, SW3PreviousState, SW2PreviousState, SW1PreviousState, SW0PreviousState;
+                SW4PreviousState, SW3PreviousState, SW2PreviousState, SW1PreviousState, SW0PreviousState;
 
-    if (coldStart) {
+    if (coldStart)
+    {
         SW7PreviousState = SWT_GetValue_Local(7);
         SW6PreviousState = SWT_GetValue_Local(6);
         SW5PreviousState = SWT_GetValue_Local(5);
@@ -470,17 +509,23 @@ bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5Sta
         *SW0StateChange = true;
         coldStart = false;
         return (true);
-
-    } else {
+    }
+    else
+    {
         // Check state of SW7
         *SW7StateChange = false;
-        if (SWT_GetValue_Local(7)) {
-            if (SW7PreviousState == false) {
+        if (SWT_GetValue_Local(7))
+        {
+            if (SW7PreviousState == false)
+            {
                 SW7PreviousState = true;
                 *SW7StateChange = true;
             }
-        } else {
-            if (SW7PreviousState == true) {
+        }
+        else
+        {
+            if (SW7PreviousState == true)
+            {
                 SW7PreviousState = false;
                 *SW7StateChange = true;
             }
@@ -488,13 +533,18 @@ bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5Sta
 
         // Check state of SW6
         *SW6StateChange = false;
-        if (SWT_GetValue_Local(6)) {
-            if (SW6PreviousState == false) {
+        if (SWT_GetValue_Local(6))
+        {
+            if (SW6PreviousState == false)
+            {
                 SW6PreviousState = true;
                 *SW6StateChange = true;
             }
-        } else {
-            if (SW6PreviousState == true) {
+        }
+        else
+        {
+            if (SW6PreviousState == true)
+            {
                 SW6PreviousState = false;
                 *SW6StateChange = true;
             }
@@ -502,13 +552,18 @@ bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5Sta
 
         // Check state of SW5
         *SW5StateChange = false;
-        if (SWT_GetValue_Local(5)) {
-            if (SW5PreviousState == false) {
+        if (SWT_GetValue_Local(5))
+        {
+            if (SW5PreviousState == false)
+            {
                 SW5PreviousState = true;
                 *SW5StateChange = true;
             }
-        } else {
-            if (SW5PreviousState == true) {
+        }
+        else
+        {
+            if (SW5PreviousState == true)
+            {
                 SW5PreviousState = false;
                 *SW5StateChange = true;
             }
@@ -516,13 +571,18 @@ bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5Sta
 
         // Check state of SW4
         *SW4StateChange = false;
-        if (SWT_GetValue_Local(4)) {
-            if (SW4PreviousState == false) {
+        if (SWT_GetValue_Local(4))
+        {
+            if (SW4PreviousState == false)
+            {
                 SW4PreviousState = true;
                 *SW4StateChange = true;
             }
-        } else {
-            if (SW4PreviousState == true) {
+        }
+        else
+        {
+            if (SW4PreviousState == true)
+            {
                 SW4PreviousState = false;
                 *SW4StateChange = true;
             }
@@ -530,13 +590,18 @@ bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5Sta
 
         // Check state of SW3
         *SW3StateChange = false;
-        if (SWT_GetValue_Local(3)) {
-            if (SW3PreviousState == false) {
+        if (SWT_GetValue_Local(3))
+        {
+            if (SW3PreviousState == false)
+            {
                 SW3PreviousState = true;
                 *SW3StateChange = true;
             }
-        } else {
-            if (SW3PreviousState == true) {
+        }
+        else
+        {
+            if (SW3PreviousState == true)
+            {
                 SW3PreviousState = false;
                 *SW3StateChange = true;
             }
@@ -544,13 +609,18 @@ bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5Sta
 
         // Check state of SW2
         *SW2StateChange = false;
-        if (SWT_GetValue_Local(2)) {
-            if (SW2PreviousState == false) {
+        if (SWT_GetValue_Local(2))
+        {
+            if (SW2PreviousState == false)
+            {
                 SW2PreviousState = true;
                 *SW2StateChange = true;
             }
-        } else {
-            if (SW2PreviousState == true) {
+        }
+        else
+        {
+            if (SW2PreviousState == true)
+            {
                 SW2PreviousState = false;
                 *SW2StateChange = true;
             }
@@ -558,13 +628,18 @@ bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5Sta
 
         // Check state of SW1
         *SW1StateChange = false;
-        if (SWT_GetValue_Local(1)) {
-            if (SW1PreviousState == false) {
+        if (SWT_GetValue_Local(1))
+        {
+            if (SW1PreviousState == false)
+            {
                 SW1PreviousState = true;
                 *SW1StateChange = true;
             }
-        } else {
-            if (SW1PreviousState == true) {
+        }
+        else
+        {
+            if (SW1PreviousState == true)
+            {
                 SW1PreviousState = false;
                 *SW1StateChange = true;
             }
@@ -572,13 +647,18 @@ bool switchStateChanged(bool *SW7StateChange, bool *SW6StateChange, bool *SW5Sta
 
         // Check state of SW0
         *SW0StateChange = false;
-        if (SWT_GetValue_Local(0)) {
-            if (SW0PreviousState == false) {
+        if (SWT_GetValue_Local(0))
+        {
+            if (SW0PreviousState == false)
+            {
                 SW0PreviousState = true;
                 *SW0StateChange = true;
             }
-        } else {
-            if (SW0PreviousState == true) {
+        }
+        else
+        {
+            if (SW0PreviousState == true)
+            {
                 SW0PreviousState = false;
                 *SW0StateChange = true;
             }
