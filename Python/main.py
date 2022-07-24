@@ -165,8 +165,8 @@ def s4app6():
 
     fe = 20000
     # filtre_fir(fe)
-    # filtre_iir(fe)
-    window(768)
+    filtre_iir(fe)
+    # window(768)
     print("Done!")
 
 
