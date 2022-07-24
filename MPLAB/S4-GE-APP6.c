@@ -249,7 +249,7 @@ int main(void)
                 mips_fft32(outFFT, inFFT, fftc, debugBuffer1, 10);
 
                 // Calculate power spectrum
-                calc_power_spectrum(outFFT, debugBuffer1, FFT_LEN);
+                // calc_power_spectrum(outFFT, debugBuffer1, FFT_LEN);
 
                 // Find index of frequency with highest power (positive frequency spectrum only)
                 maxVal = -1;
@@ -311,15 +311,47 @@ int main(void)
                 //                of the FFT algorithm (See DS51685E, p.118), else roundoff error
                 //                decreases resolution of X[k] result.
 
+                uint32_t i, j;
+                // for(i = 0; i < FFT_LEN;i++)
+                // {
+                //     currentInBuffer[i] = i;
+                //     previousInBuffer[i] = 100 * ((i >> 8) + 1);
+                // }
+
+                for (i = 0; i < 4; i++)
+                {
+                    for (j = 0; j < H_LEN; j++)
+                    {
+                        if (i == 0)
+                            inFFT[(H_LEN * i) + j].re = currentInBuffer[(H_LEN * 2) + j] * FFT_LEN;
+                        else
+                            inFFT[(H_LEN * i) + j].re = previousInBuffer[(H_LEN * (i - 1)) + j] * FFT_LEN;
+                        inFFT[(H_LEN * i) + j].im = 0;
+
+                        // debugBuffer2[(H_LEN * i) + j] = inFFT[(H_LEN * i) + j].re / 1024;
+                    }
+                }
+
                 // *** POINT B1: Calculate X[k] with PIC32 DSP Library FFT function call
+                mips_fft32(outFFT, inFFT, fftc, debugBuffer1, 10);
+                // calc_power_spectrum(outFFT, debugBuffer1, FFT_LEN);
 
                 // *** POINT B2: FIR Filtering, calculate Y* = (HX)*, where "*" is the complex conjugate
                 // (instead of Y=HX, in preparation for inverse FFT using forward FFT library function call)
+                for (i = 0; i < FFT_LEN; i++)
+                {
+                    inFFT[i].re = (Htot[i].re * outFFT[i].re) - (Htot[i].im * outFFT[i].im);
+                    inFFT[i].im = (Htot[i].re * outFFT[i].im) + (Htot[i].im * outFFT[i].re);
+                    inFFT[i].im *= -1;
+                }
 
                 // *** POINT B3: Inverse FFT by forward FFT library function call, no need to divide by N
+                mips_fft32(outFFT, inFFT, fftc, debugBuffer1, 10);
 
                 // *** POINT B4: Extract real part of the inverse FFT result and remove H QX.Y scaling,
                 // discard first block as per the "Overlap-and-save" method.
+                for (i = 0; i < SIG_LEN; i++)
+                    previousOutBuffer[i] = outFFT[i + 256].re / (2 << 12UL);
 
                 // If required, update LCD display with SW7-SW3 switch states
                 if (switchStateChange)
