@@ -139,11 +139,34 @@ def filtre_iir(fe: float):
     iir_export.close()
 
 
+def window(sig_len):
+    # Create window
+    w = np.hanning(sig_len)
+
+    # Open export file
+    window_export = open("window.h", "w")
+    window_export.write("// rectangle window // Q2.13\n")
+
+    # Write to export file
+    window_export.write("const int32_t window[SIG_LEN] = {\n")
+
+    for i in range(0, sig_len):
+        # Reformat to Q2.13
+        val = int(np.round(w[i] * 2 ** 13))
+        window_export.write(f"\t{val},\n")
+    window_export.write("};\n")
+
+    # Close export file
+    window_export.close()
+
+
 def s4app6():
     plt.ion()  # Comment out if using scientific mode!
 
     fe = 20000
-    filtre_fir(fe)
+    # filtre_fir(fe)
+    # filtre_iir(fe)
+    window(768)
     print("Done!")
 
 
